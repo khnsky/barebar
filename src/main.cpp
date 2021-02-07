@@ -53,10 +53,16 @@ class barebar {
         return _.connection;
     }
 
+    // connection here is pretty much required so that connect which sets screen
+    // is run before this function.
+    static auto screen_of(xcb_connection_t*) noexcept {
+        return _.screen;
+    }
+
 public:
     static auto run() noexcept {
         auto connection = connect();
-        (void)connection;
+        auto screen     = screen_of(connection);
     }
 };
 decltype(barebar::_) barebar::_;
