@@ -21,7 +21,20 @@ auto must(T&& t, char const* fmt, Args... args) {
     return t;
 }
 
-}
+class barebar {
+    // unfortunately we need to use global variables in order to do cleanup at
+    // exit.  we can however hide them inside a class and initialize and access
+    // them using member functions.
+    static struct {
+    } _;
+
+public:
+    static auto run() noexcept {}
+};
+decltype(barebar::_) barebar::_;
+
+} // anonymous namespace
 
 auto main() -> int {
+    barebar::run();
 }
