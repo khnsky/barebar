@@ -28,10 +28,15 @@ class barebar {
     static struct {
         xcb_connection_t* connection;
         xcb_screen_t*     screen;
+        xcb_window_t      window;
     } _;
 
     static auto disconnect() noexcept {
         xcb_disconnect(_.connection);
+    }
+
+    static auto destroy_window() noexcept {
+        xcb_destroy_window(_.connection, _.window);
     }
 
     // TODO should there be check so that this can be only run once?
@@ -59,10 +64,72 @@ class barebar {
         return _.screen;
     }
 
+    static auto create_window(xcb_connection_t* connection,
+                              xcb_screen_t* screen) noexcept {
+        auto randr = xcb_get_extension_data(connection, &xcb_randr_id);
+        must(randr && randr->present, "%s", "randr is not present");
+
+        auto primary = xcb_randr_get_output_primary_reply(
+            connection,
+            xcb_randr_get_output_primary(connection, screen->root),
+            nullptr
+        );
+        must(primary, "%s\n", "can't get primary output");
+
+        auto info = xcb_randr_get_output_info_reply(
+            connection,
+            xcb_randr_get_output_info(connection,
+                                      primary->output,
+                                      XCB_CURRENT_TIME),
+            nullptr
+        );
+        free(primary);
+        must(info, "%s\n", "can't get primary output info");
+        must(info->crtc != XCB_NONE, "%s\n",
+             "primary output not attached to crtc");
+        must(info->connection != XCB_RANDR_CONNECTION_DISCONNECTED, "%s\n",
+             "primary output disconnected");
+
+        auto crtc = xcb_randr_get_crtc_info_reply(
+            connection,
+            xcb_randr_get_crtc_info(connection, info->crtc, XCB_CURRENT_TIME),
+            nullptr
+        );
+        free(info);
+        must(crtc, "%s\n", "can't get crtc info");
+
+        _.window = xcb_generate_id(connection);
+        // yabar, lemonbar do also border pixel and event button press
+        xcb_create_window(
+            connection,
+            XCB_COPY_FROM_PARENT,
+            _.window,
+            screen->root,
+            crtc->x, crtc->y, crtc->width, 12, 0, // x, y, w, h, b
+            XCB_WINDOW_CLASS_INPUT_OUTPUT,
+            screen->root_visual,
+            XCB_CW_BACK_PIXEL        |
+            XCB_CW_OVERRIDE_REDIRECT |
+            XCB_CW_EVENT_MASK        |
+            XCB_CW_COLORMAP,
+            (uint32_t []) {
+                screen->black_pixel,  // background
+                true,                 // wm not to mess with this
+                XCB_EVENT_MASK_EXPOSURE,
+                XCB_COPY_FROM_PARENT
+            }
+        );
+        free(crtc);
+        std::atexit(destroy_window);
+
+        return _.window;
+    }
+
 public:
     static auto run() noexcept {
         auto connection = connect();
         auto screen     = screen_of(connection);
+        auto window     = create_window(connection, screen);
     }
 };
 decltype(barebar::_) barebar::_;
