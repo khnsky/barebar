@@ -64,7 +64,12 @@ class barebar {
         return _.screen;
     }
 
-    static auto create_window(xcb_connection_t* connection,
+    struct monitor {
+        int16_t  x, y;
+        uint16_t w, h;
+    };
+
+    static auto primary_output(xcb_connection_t* connection,
                               xcb_screen_t* screen) noexcept {
         auto randr = xcb_get_extension_data(connection, &xcb_randr_id);
         must(randr && randr->present, "%s", "randr is not present");
@@ -98,14 +103,22 @@ class barebar {
         free(info);
         must(crtc, "%s\n", "can't get crtc info");
 
+        auto ret = monitor { crtc->x, crtc->y, crtc->width, crtc->height };
+        free(crtc);
+        return ret;
+    }
+
+    static auto create_window(xcb_connection_t* connection,
+                              xcb_screen_t* screen,
+                              monitor output) noexcept {
         _.window = xcb_generate_id(connection);
-        // yabar, lemonbar do also border pixel and event button press
         xcb_create_window(
             connection,
             XCB_COPY_FROM_PARENT,
             _.window,
             screen->root,
-            crtc->x, crtc->y, crtc->width, 12, 0, // x, y, w, h, b
+            output.x, output.y, output.w,
+            12, 0,                              // height, border width
             XCB_WINDOW_CLASS_INPUT_OUTPUT,
             screen->root_visual,
             XCB_CW_BACK_PIXEL        |
@@ -113,13 +126,12 @@ class barebar {
             XCB_CW_EVENT_MASK        |
             XCB_CW_COLORMAP,
             (uint32_t []) {
-                screen->black_pixel,  // background
-                true,                 // wm not to mess with this
+                screen->black_pixel,            // background
+                true,                           // wm not to mess with this
                 XCB_EVENT_MASK_EXPOSURE,
                 XCB_COPY_FROM_PARENT
             }
         );
-        free(crtc);
         std::atexit(destroy_window);
 
         return _.window;
@@ -129,7 +141,8 @@ public:
     static auto run() noexcept {
         auto connection = connect();
         auto screen     = screen_of(connection);
-        auto window     = create_window(connection, screen);
+        auto primary    = primary_output(connection, screen);
+        auto window     = create_window(connection, screen, primary);
     }
 };
 decltype(barebar::_) barebar::_;
