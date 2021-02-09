@@ -5,10 +5,14 @@
 
 #include <xcb/randr.h>
 #include <xcb/xcb_ewmh.h>
+#include <xcb/xcb_icccm.h>
 
 #include <array>
+#include <algorithm>
 #include <string_view>
 using namespace std::literals;
+
+#include <unistd.h>
 
 // enclose everything in a anonymous namespace for that sweet internal linkage.
 namespace {
@@ -21,7 +25,7 @@ template<class... Args>
 }
 
 template<class T, class... Args>
-auto must(T&& t, char const* fmt, Args... args) {
+auto must(T t, char const* fmt, Args... args) {
     if (!t)
         die(fmt, args...);
     return t;
@@ -223,6 +227,54 @@ class barebar {
                             "barebar");
     }
 
+    static auto map_window(xcb_connection_t* connection,
+                           xcb_screen_t* screen,
+                           xcb_window_t window,
+                           monitor output) noexcept {
+        // required so that fullscreen works with bspwm
+        auto tree = xcb_query_tree_reply(
+            connection, xcb_query_tree(connection, screen->root), nullptr
+        );
+        must(tree, "%s\n", "failed to query window tree");
+
+        auto children = xcb_query_tree_children(tree);
+        auto length   = xcb_query_tree_children_length(tree);
+
+        std::for_each_n(children, length, [&] (auto child) {
+            xcb_icccm_get_wm_class_reply_t c;
+            // here reply is a simple bool, no need to free it.
+            auto reply = xcb_icccm_get_wm_class_reply(
+                connection,
+                xcb_icccm_get_wm_class(connection, child),
+                &c,
+                nullptr
+            );
+
+            if (reply)
+                if (c.class_name == "Bspwm"sv && c.instance_name == "root"sv)
+                    xcb_configure_window(
+                        connection,
+                        window,
+                        XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE,
+                        (uint32_t []) { child, XCB_STACK_MODE_ABOVE }
+                    );
+        });
+        free(tree);
+
+
+        xcb_map_window(connection, window);
+
+        // apparently this is required for some WMs (such as Openbox?)
+        auto x = static_cast<uint32_t>(output.x);
+        auto y = static_cast<uint32_t>(output.y);
+        xcb_configure_window(connection,
+                             window,
+                             XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y,
+                             (uint32_t []) { x, y });
+
+        xcb_flush(connection);
+    }
+
 public:
     static auto run() noexcept {
         auto connection = connect();
@@ -231,6 +283,9 @@ public:
         auto window     = create_window(connection, screen, primary);
 
         set_ewmh_atoms(connection, window, primary);
+        map_window(connection, screen, window, primary);
+
+        pause();
     }
 };
 decltype(barebar::_) barebar::_;
