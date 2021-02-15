@@ -12,7 +12,9 @@
 #include <string_view>
 using namespace std::literals;
 
-#include <unistd.h>
+#include <unistd.h>                     // for pause()
+
+#define LOC(msg) "[%s:%d] " msg "\n", __FILE__, __LINE__
 
 // enclose everything in a anonymous namespace for that sweet internal linkage.
 namespace {
@@ -55,7 +57,7 @@ class barebar {
         _.connection = xcb_connect(display, &n);
 
         if (xcb_connection_has_error(_.connection))
-            die("[%s:%d] xcb_connect failed\n", __FILE__, __LINE__);
+            die(LOC("xcb_connect failed"));
 
         std::atexit(disconnect);
 
@@ -80,16 +82,16 @@ class barebar {
     };
 
     static auto primary_output(xcb_connection_t* connection,
-                              xcb_screen_t* screen) noexcept {
+                               xcb_screen_t* screen) noexcept {
         auto randr = xcb_get_extension_data(connection, &xcb_randr_id);
-        must(randr && randr->present, "%s", "randr is not present");
+        must(randr && randr->present, LOC("randr is not present"));
 
         auto primary = xcb_randr_get_output_primary_reply(
             connection,
             xcb_randr_get_output_primary(connection, screen->root),
             nullptr
         );
-        must(primary, "%s\n", "can't get primary output");
+        must(primary, LOC("can't get primary output"));
 
         auto info = xcb_randr_get_output_info_reply(
             connection,
@@ -99,11 +101,10 @@ class barebar {
             nullptr
         );
         free(primary);
-        must(info, "%s\n", "can't get primary output info");
-        must(info->crtc != XCB_NONE, "%s\n",
-             "primary output not attached to crtc");
-        must(info->connection != XCB_RANDR_CONNECTION_DISCONNECTED, "%s\n",
-             "primary output disconnected");
+        must(info, LOC("can't get primary output info"));
+        must(info->crtc != XCB_NONE, LOC("primary output not attached to crtc"));
+        must(info->connection != XCB_RANDR_CONNECTION_DISCONNECTED,
+             LOC("primary output disconnected"));
 
         auto crtc = xcb_randr_get_crtc_info_reply(
             connection,
@@ -111,7 +112,7 @@ class barebar {
             nullptr
         );
         free(info);
-        must(crtc, "%s\n", "can't get crtc info");
+        must(crtc, LOC("can't get crtc info"));
 
         auto ret = monitor { crtc->x, crtc->y, crtc->width, crtc->height };
         free(crtc);
@@ -171,7 +172,7 @@ class barebar {
         std::array<xcb_atom_t, std::size(names)> atoms;
         for (auto i = 0; i != std::size(names); ++i) {
             auto reply = xcb_intern_atom_reply(connection, cookies[i], nullptr);
-            must(reply, "%s\n", "failed to get intern atom reply");
+            must(reply, LOC("failed to get intern atom reply"));
 
             atoms[i] = reply->atom;
             free(reply);
@@ -235,7 +236,7 @@ class barebar {
         auto tree = xcb_query_tree_reply(
             connection, xcb_query_tree(connection, screen->root), nullptr
         );
-        must(tree, "%s\n", "failed to query window tree");
+        must(tree, LOC("failed to query window tree"));
 
         auto children = xcb_query_tree_children(tree);
         auto length   = xcb_query_tree_children_length(tree);
