@@ -189,23 +189,23 @@ class barebar {
         xcb_change_property(connection,
                             XCB_PROP_MODE_REPLACE,
                             window,
-                            atoms[0],
+                            atoms[0],               // _NET_WM_WINDOW_TYPE
                             XCB_ATOM_ATOM,
                             32,
                             1,
-                            &atoms[1]);
+                            &atoms[1]);             // _NET_WM_WINDOW_TYPE_DOCK
         xcb_change_property(connection,
                             XCB_PROP_MODE_APPEND,
                             window,
-                            atoms[5],
+                            atoms[5],               // _NET_WM_STATE_STATE
                             XCB_ATOM_ATOM,
                             32,
                             2,
-                            &atoms[6]);
+                            &atoms[6]);             // _NET_WM_STATE_STICKY
         xcb_change_property(connection,
                             XCB_PROP_MODE_REPLACE,
                             window,
-                            atoms[2],
+                            atoms[2],               // _NET_WM_DESKTOP
                             XCB_ATOM_CARDINAL,
                             32,
                             1,
@@ -213,7 +213,7 @@ class barebar {
         xcb_change_property(connection,
                             XCB_PROP_MODE_REPLACE,
                             window,
-                            atoms[3],
+                            atoms[3],               // _NET_WM_STRUT_PARTIAL
                             XCB_ATOM_CARDINAL,
                             32,
                             12,
