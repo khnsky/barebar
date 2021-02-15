@@ -133,12 +133,10 @@ class barebar {
             XCB_WINDOW_CLASS_INPUT_OUTPUT,
             screen->root_visual,
             XCB_CW_BACK_PIXEL        |
-            XCB_CW_OVERRIDE_REDIRECT |
             XCB_CW_EVENT_MASK        |
             XCB_CW_COLORMAP,
             (uint32_t []) {
                 screen->black_pixel,            // background
-                true,                           // wm not to mess with this
                 XCB_EVENT_MASK_EXPOSURE,
                 XCB_COPY_FROM_PARENT
             }
