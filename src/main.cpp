@@ -259,14 +259,15 @@ class barebar {
                 nullptr
             );
 
-            if (reply)
-                if (c.class_name == "Bspwm"sv && c.instance_name == "root"sv)
-                    xcb_configure_window(
-                        connection,
-                        window,
-                        XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE,
-                        (uint32_t []) { child, XCB_STACK_MODE_ABOVE }
-                    );
+            if (reply                        &&
+                c.class_name    == "Bspwm"sv &&
+                c.instance_name == "root"sv)
+                xcb_configure_window(
+                    connection,
+                    window,
+                    XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE,
+                    (uint32_t []) { child, XCB_STACK_MODE_ABOVE }
+                );
         });
         free(tree);
 
