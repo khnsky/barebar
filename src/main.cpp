@@ -221,6 +221,14 @@ class barebar {
         xcb_change_property(connection,
                             XCB_PROP_MODE_REPLACE,
                             window,
+                            atoms[4],               // _NET_WM_STRUT
+                            XCB_ATOM_CARDINAL,
+                            32,
+                            4,
+                            strut.data());
+        xcb_change_property(connection,
+                            XCB_PROP_MODE_REPLACE,
+                            window,
                             XCB_ATOM_WM_NAME,
                             XCB_ATOM_STRING,
                             8,
