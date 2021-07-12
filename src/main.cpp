@@ -40,14 +40,6 @@ class barebar {
         xcb_window_t      window;
     } _;
 
-    static auto disconnect() noexcept {
-        xcb_disconnect(_.connection);
-    }
-
-    static auto destroy_window() noexcept {
-        xcb_destroy_window(_.connection, _.window);
-    }
-
     // TODO should there be check so that this can be only run once?
     static auto connect(char const* display = nullptr) noexcept {
         auto n = 0;
@@ -56,7 +48,7 @@ class barebar {
         if (xcb_connection_has_error(_.connection))
             DIE(LOC("xcb_connect failed"));
 
-        std::atexit(disconnect);
+        std::atexit([] { xcb_disconnect(_.connection); });
 
         auto r = xcb_setup_roots_iterator(xcb_get_setup(_.connection));
         for (auto i = 0; i != n; ++i)
@@ -140,7 +132,7 @@ class barebar {
                 XCB_COPY_FROM_PARENT
             }
         );
-        std::atexit(destroy_window);
+        std::atexit([] { xcb_destroy_window(_.connection, _.window); });
 
         return _.window;
     }
